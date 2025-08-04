@@ -1,0 +1,38 @@
+-- models/staging/stg_sales.sql
+
+with source as (
+    select * from {{ source('raw', 'sales_clean') }}
+),
+
+renamed as (
+    select
+        date::date as sale_date,
+        lower(product) as product,
+        initcap(region) as region,
+        amount::decimal(10,2) as amount,
+        initcap(salesperson) as salesperson
+    from source
+)
+
+select * from renamed
+
+
+-- models/marts/sales_summary.sql
+
+with sales as (
+    select * from {{ ref('stg_sales') }}
+),
+
+agg as (
+    select
+        sale_date,
+        region,
+        product,
+        salesperson,
+        sum(amount) as total_sales
+    from sales
+    group by sale_date, region, product, salesperson
+)
+
+select * from agg
+order by sale_date, region
